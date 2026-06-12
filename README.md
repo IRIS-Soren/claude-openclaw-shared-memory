@@ -1,2 +1,3 @@
-# claude-openclaw-shared-memory
-Stop being the clipboard between Claude Code and OpenClaw.
+# Stop Being the Clipboard Between Your AIs
+
+A zero-code markdown-based handoff workflow for Claude Code and OpenClaw.
