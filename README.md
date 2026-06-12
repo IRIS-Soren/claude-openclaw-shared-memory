@@ -1,48 +1,123 @@
 # Stop Being the Clipboard Between Your AIs
 
-A zero-code markdown-based handoff workflow for Claude Code and OpenClaw.
+A lightweight markdown-based handoff workflow for Claude Code and OpenClaw.
+
+---
+
+## Why This Exists
+
+I use two AI tools daily. One for planning, one for coding.
+
+Every time I switch between them, I retype the same context: what was discussed, what changed, what's next.
+
+Eventually I realized:
+
+> **I wasn't using AI anymore. I was acting as a clipboard between AIs.**
+
+This project is the fix — compressed to its simplest form.
 
 ---
 
 ## The Problem
 
-I use two AI tools daily:
-
 - **OpenClaw** — planning, research, architecture, orchestration
 - **Claude Code** — implementation, refactoring, deep engineering
 
-They don't share context.
+They don't share context. The user carries all of it.
 
-Every time I switch, I repeat the same information: what was discussed, what changed, why it changed, what comes next.
-
-At some point I realized:
-
-**I wasn't using AI anymore. I was acting as a clipboard between AIs.**
+Each handoff means re-explaining: what happened, why, and where things stand.
 
 ---
 
 ## The Solution
 
-Three shared markdown files. A fixed handoff protocol. That's it.
+Three shared markdown files. A fixed handoff protocol.
 
-Each AI writes a structured entry when it completes meaningful work. The next AI reads the file before starting. Context passes through the filesystem.
+Each AI writes a structured entry when work is done. The next AI reads it before starting. Context passes through the filesystem — no server, no API, no framework.
+
+---
+
+## Demo
+
+<video src="demo.mp4" width="800" controls autoplay loop muted></video>
+
+The full loop:
 
 ```
-OpenClaw workspace\
-├── share_main.md       ← main agent handoff
-├── share_vision.md     ← vision agent handoff
-└── share_yckz.md       ← yckz agent handoff
+OpenClaw                    Claude Code
+   │                             │
+   ├─ writes share.md ──────────►│
+   │                             ├─ reads share.md
+   │                             ├─ does the work
+   │                             ├─ updates share.md
+   │◄────────────────────────────┘
+   │
+   ├─ reads Claude's update
+   ├─ continues working
+```
 
-Claude Code project\.claude\
-├── CLAUDE.md           ← handoff rules (auto-loaded)
-└── settings.local.json ← Stop hook (exit reminder)
+---
+
+## Quick Start
+
+After running `setup.bat` (30 seconds):
+
+1. In OpenClaw, write a test entry to `share_main.md`
+2. In Claude Code, type: `看 share_main`
+3. Claude reads the file and appends a response
+4. Switch back to OpenClaw — the response is there
+
+The user's only input at each handoff: **a single sentence.**
+
+---
+
+## Architecture
+
+```
+         Human
+           │
+    decision + dispatch
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+ OpenClaw    Claude Code
+     │           │
+     │  writes   │  reads
+     ▼           ▼
+ ┌─────────────────────┐
+ │   share_main.md     │
+ │   share_vision.md   │
+ │   share_yckz.md     │
+ └─────────────────────┘
+     ▲           ▲
+     │  reads    │  writes
+     │           │
+ OpenClaw    Claude Code
+```
+
+Files live in the OpenClaw workspace. Claude Code reads and writes them via tool calls. No server. No sync. Just a filesystem.
+
+---
+
+## Workflow
+
+```
+OpenClaw → Claude Code:
+  1. OpenClaw finishes work, writes to share file
+  2. Open Claude Code, type: "看 share_vision"
+  3. Claude reads context, confirms status, starts working
+
+Claude Code → OpenClaw:
+  1. Claude finishes work, updates share file
+  2. Switch to OpenClaw, type: "看 share"
+  3. OpenClaw reads Claude's update, continues
 ```
 
 ---
 
 ## Handoff Protocol
 
-Both sides write entries in a shared format:
+Both sides use the same format:
 
 ```yaml
 ---
@@ -67,25 +142,32 @@ status: done | in-progress | blocked
 [free-form context]
 ```
 
-Entries are appended to the file. Old entries become project history.
+Append-only. Old entries become project history.
 
 ---
 
-## Workflow
+## Installation
 
-```
-OpenClaw → Claude Code:
-  1. OpenClaw finishes work, writes to share file
-  2. Open Claude Code, type: "看 share_vision"
-  3. Claude reads file, confirms status, starts working
+### Windows
 
-Claude Code → OpenClaw:
-  1. Claude finishes work, updates share file
-  2. Switch to OpenClaw, type: "看 share"
-  3. OpenClaw reads Claude's update
-```
+1. Download and extract this folder
+2. Double-click `setup.bat`
+3. Enter your OpenClaw workspace path and Claude Code project path
+4. Done
 
-The user's only input at each handoff: **a single sentence.**
+### macOS / Linux
+
+1. Copy `templates/share_*.md` to your OpenClaw workspace
+2. Copy `templates/CLAUDE.md` to `.claude/` in your project
+3. Merge `hooks/stop-hook.json` into `.claude/settings.local.json`
+
+---
+
+## Token Cost
+
+Typically a few hundred tokens per handoff.
+
+Share files are read via tool call, not injected into the system prompt. If you don't read the file, you don't pay for it.
 
 ---
 
@@ -96,23 +178,9 @@ The user's only input at each handoff: **a single sentence.**
 - **Not** an MCP server
 - **Not** an API integration layer
 
-Shared memory is not a new idea. Markdown-based memory has prior art (e.g., TICK.md). Agent handoff protocols exist in research and industry.
+Shared memory is not a new idea (Blackboard architecture, 1985). Markdown-based memory has prior art (e.g., TICK.md). Agent handoff protocols exist in research and industry.
 
-**The only thing novel here is compressing the problem to its simplest form** for the specific case of Claude Code + OpenClaw.
-
----
-
-## Why Not MCP / Agent Frameworks?
-
-| Approach | Setup Cost | Maintenance | Token Overhead |
-|----------|-----------|-------------|----------------|
-| MCP server | Write server + deploy | Ongoing | Low |
-| Agent framework (AutoGen, CrewAI) | Learn framework + write code | Ongoing | Medium |
-| ACP adapter | Write adapter | Ongoing | Medium |
-| Clipboard (manual) | Zero | Zero | Very high |
-| **Shared markdown files** | **Zero** | **Zero** | **~500 tokens/handoff** |
-
-For a solo developer shipping real projects, the most expensive resource is not tokens — it's time spent maintaining infrastructure. This approach adds no infrastructure.
+The only value here: compressing the Claude Code + OpenClaw handoff problem to its simplest working form.
 
 ---
 
@@ -126,41 +194,17 @@ For a solo developer shipping real projects, the most expensive resource is not 
 
 ---
 
-## Installation
+## Why Not MCP / Agent Frameworks?
 
-### Windows
+| Approach | Setup Cost | Maintenance | Token Overhead |
+|----------|-----------|-------------|----------------|
+| MCP server | Write server + deploy | Ongoing | Low |
+| Agent framework | Learn framework + code | Ongoing | Medium |
+| ACP adapter | Write adapter | Ongoing | Medium |
+| Clipboard (manual) | Zero | Zero | Very high |
+| **Shared markdown files** | **Zero** | **Zero** | **Minimal** |
 
-1. Download and extract this folder
-2. Double-click `setup.bat`
-3. Enter your OpenClaw workspace path and Claude Code project path
-4. Done — the script creates all files and configures the Stop hook
-
-### macOS / Linux
-
-1. Copy `templates/share_*.md` to your OpenClaw workspace
-2. Copy `templates/CLAUDE.md` to your project's `.claude/` directory
-3. Merge `hooks/stop-hook.json` into `.claude/settings.local.json`
-
----
-
-## Quick Start
-
-After setup, verify the loop works:
-
-1. In OpenClaw, write a test entry to `share_main.md`
-2. In Claude Code, type: `看 share_main`
-3. Claude reads the file and appends a response
-4. Switch back to OpenClaw and confirm the response is visible
-
-The full loop takes under a minute.
-
----
-
-## Token Cost
-
-A single handoff (read share + write update) costs approximately **500 tokens**.
-
-Share files are read via tool call, not injected into the system prompt. If you don't read the file, you don't pay for it.
+For a solo developer shipping real projects, the most expensive resource is not tokens — it's time spent maintaining infrastructure.
 
 ---
 
@@ -169,14 +213,14 @@ Share files are read via tool call, not injected into the system prompt. If you 
 - **Asynchronous only** — both AIs cannot work on the same file simultaneously
 - **Human-initiated** — the user must switch tools and say "看 share"
 - **No conflict resolution** — don't let both AIs modify the same source file at once
-- **Discipline required** — you need to remember to update the share file (the Stop hook helps)
+- **Discipline required** — remember to update share (the Stop hook helps)
 
 ---
 
 ## Related Work
 
 - [TICK.md](https://github.com/niccokunzmann/tickmd) — markdown-based task tracking
-- Blackboard architecture (Hayes-Roth, 1985) — the original inspiration
+- Blackboard architecture (Hayes-Roth, 1985) — the original shared-memory AI pattern
 - [Claude Code Hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) — used for the exit reminder
 
 ---
